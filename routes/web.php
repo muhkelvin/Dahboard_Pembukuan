@@ -8,7 +8,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RevenueController;
 
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
 Route::get('/dashboard/download-pdf', [DashboardController::class, 'downloadPDF'])->name('dashboard.downloadPDF');
 Route::resource('products', ProductController::class);
 Route::resource('categories', CategoryController::class);

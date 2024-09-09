@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DashboardController extends Controller
 {
@@ -83,31 +84,81 @@ class DashboardController extends Controller
     {
         $period = $request->query('period', 'monthly');
 
-        // Sama seperti pada method index, tentukan rentang tanggal atau 'all'
-        if ($period === 'all') {
-            $purchases = Purchase::all();
-            $expenses = Expense::all();
-            $revenues = Revenue::all();
-        } else {
-            $startDate = match ($period) {
-                'weekly' => Carbon::now()->subWeek(),
-                'monthly' => Carbon::now()->subMonth(),
-                'yearly' => Carbon::now()->subYear(),
-                default => Carbon::now()->subMonth(),
-            };
+        // Tentukan rentang tanggal dan label periode
+        $startDate = match ($period) {
+            'daily' => Carbon::today(),
+            'weekly' => Carbon::now()->startOfWeek(),
+            'monthly' => Carbon::now()->startOfMonth(),
+            'yearly' => Carbon::now()->startOfYear(),
+            'all' => null,
+            default => Carbon::now()->startOfMonth(),
+        };
 
-            $purchases = Purchase::where('purchase_date', '>=', $startDate)->get();
-            $expenses = Expense::where('expense_date', '>=', $startDate)->get();
-            $revenues = Revenue::where('revenue_date', '>=', $startDate)->get();
-        }
+        $periodLabel = match ($period) {
+            'daily' => 'Hari Ini',
+            'weekly' => 'Minggu Ini',
+            'monthly' => 'Bulan Ini',
+            'yearly' => 'Tahun Ini',
+            'all' => 'Semua Waktu',
+            default => 'Bulan Ini',
+        };
 
+        // Query data berdasarkan rentang tanggal
+        $purchases = Purchase::when($startDate, function ($query) use ($startDate) {
+            return $query->where('purchase_date', '>=', $startDate);
+        })->get();
+
+        $expenses = Expense::when($startDate, function ($query) use ($startDate) {
+            return $query->where('expense_date', '>=', $startDate);
+        })->get();
+
+        // Menghitung total pembelian
         $totalPurchases = $purchases->sum('total_price');
         $totalExpenses = $expenses->sum('amount');
-        $totalRevenues = $revenues->sum('amount');
+
+        // Total Pembelian yang Belum Lunas
+        $totalPendingPurchases = Purchase::where('payment_status', 'Belum Lunas')
+            ->when($startDate, function ($query) use ($startDate) {
+                return $query->where('purchase_date', '>=', $startDate);
+            })->sum('total_price');
+
+        // Hitung total pendapatan (hanya dari pembelian yang sudah lunas)
+        $totalRevenues = $purchases->where('payment_status', 'Lunas')->sum('total_price');
+
         $profit = $totalRevenues - $totalExpenses;
 
-        $pdf = Pdf::loadView('dashboard.pdf', compact('totalPurchases', 'totalExpenses', 'totalRevenues', 'profit', 'period'));
-        return $pdf->download('dashboard_report.pdf');
+        // Hitung total produk yang dibeli
+        $totalProductsPurchased = $purchases->sum('quantity');
+
+        // Ambil 5 produk yang paling laku
+        $topSellingProducts = Purchase::select('product_id', DB::raw('SUM(quantity) as total_quantity'))
+            ->when($startDate, function ($query) use ($startDate) {
+                return $query->where('purchase_date', '>=', $startDate);
+            })
+            ->groupBy('product_id')
+            ->orderBy('total_quantity', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($purchase) {
+                $product = Product::find($purchase->product_id);
+                return [
+                    'product' => $product,
+                    'total_quantity' => $purchase->total_quantity,
+                ];
+            });
+
+        $pdf = PDF::loadView('dashboard.pdf', compact(
+            'totalPurchases',
+            'totalPendingPurchases',
+            'totalExpenses',
+            'totalRevenues',
+            'profit',
+            'topSellingProducts',
+            'totalProductsPurchased',
+            'periodLabel'
+        ));
+
+        return $pdf->download('laporan-keuangan-' . Str::slug($periodLabel) . '.pdf');
     }
 }
 

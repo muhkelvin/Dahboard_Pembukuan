@@ -9,10 +9,17 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with('category')->get();
-        return view('crud.products.index', compact('products'));
+        $order = $request->get('order', 'asc'); // Default order A-Z (ascending)
+        $search = $request->get('search', ''); // Default search query is empty
+
+        $products = Product::with('category')
+            ->where('name', 'like', '%' . $search . '%')
+            ->orderBy('name', $order)
+            ->get();
+
+        return view('crud.products.index', compact('products', 'order', 'search'));
     }
 
     public function create()
@@ -57,7 +64,7 @@ class ProductController extends Controller
         ]);
 
         $product->update($validated);
-        return redirect()->route('crud.products.index');
+        return redirect()->route('products.index');
     }
 
 

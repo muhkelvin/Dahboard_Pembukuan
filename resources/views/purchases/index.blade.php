@@ -35,6 +35,13 @@
                     <td class="px-6 py-4 border-b">
                         <a href="{{ route('purchases.edit', $purchase->id) }}" class="text-blue-600 hover:text-blue-900">Edit</a>
                     </td>
+                    <td class="px-6 py-4 border-b">
+                        <form action="{{ route('purchases.destroy', $purchase->id) }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                        </form>
+                    </td>
                 </tr>
             @endforeach
             </tbody>

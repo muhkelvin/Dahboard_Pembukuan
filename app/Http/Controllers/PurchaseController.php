@@ -25,7 +25,7 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
             'quantity' => 'required|integer',
             'total_price' => 'required|numeric',
             'purchase_date' => 'required|date',
