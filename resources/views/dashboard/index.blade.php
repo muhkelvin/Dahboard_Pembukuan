@@ -2,17 +2,17 @@
 
 @section('content')
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-6">Dashboard Keuangan</h1>
+        <h1 class="text-3xl font-bold mb-6">Financial Dashboard</h1>
 
         <!-- Filter Period -->
         <div class="mb-6">
             <form action="{{ route('dashboard.index') }}" method="GET" class="flex flex-wrap items-center space-x-4">
                 <select name="period" class="border rounded px-3 py-2" onchange="this.form.submit()">
-                    <option value="daily" {{ request('period') == 'daily' ? 'selected' : '' }}>Hari Ini</option>
-                    <option value="weekly" {{ request('period') == 'weekly' ? 'selected' : '' }}>Minggu Ini</option>
-                    <option value="monthly" {{ request('period') == 'monthly' ? 'selected' : '' }}>Bulan Ini</option>
-                    <option value="yearly" {{ request('period') == 'yearly' ? 'selected' : '' }}>Tahun Ini</option>
-                    <option value="all" {{ request('period') == 'all' ? 'selected' : '' }}>Semua Waktu</option>
+                    <option value="daily" {{ request('period') == 'daily' ? 'selected' : '' }}>Today</option>
+                    <option value="weekly" {{ request('period') == 'weekly' ? 'selected' : '' }}>This week</option>
+                    <option value="monthly" {{ request('period') == 'monthly' ? 'selected' : '' }}>This month</option>
+                    <option value="yearly" {{ request('period') == 'yearly' ? 'selected' : '' }}>This year</option>
+                    <option value="all" {{ request('period') == 'all' ? 'selected' : '' }}>All Time</option>
                 </select>
                 <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Filter</button>
                 <a href="{{ route('dashboard.downloadPDF', ['period' => request('period', 'monthly')]) }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ml-2">
@@ -24,15 +24,15 @@
         <!-- Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
             <div class="bg-white shadow-lg rounded-lg p-6">
-                <h5 class="text-lg font-semibold mb-2">Total Pendapatan</h5>
+                <h5 class="text-lg font-semibold mb-2">Total Revenue</h5>
                 <p class="text-3xl font-bold text-green-600">Rp {{ number_format($totalRevenues, 0, ',', '.') }}</p>
             </div>
             <div class="bg-white shadow-lg rounded-lg p-6">
-                <h5 class="text-lg font-semibold mb-2">Total Pembelian</h5>
+                <h5 class="text-lg font-semibold mb-2">Total Purchase</h5>
                 <p class="text-3xl font-bold text-blue-600">Rp {{ number_format($totalPurchases, 0, ',', '.') }}</p>
             </div>
             <div class="bg-white shadow-lg rounded-lg p-6">
-                <h5 class="text-lg font-semibold mb-2">Pembelian Belum Lunas</h5>
+                <h5 class="text-lg font-semibold mb-2">Purchase Not Yet Completed</h5>
                 <p class="text-3xl font-bold text-red-600">Rp {{ number_format($totalPendingPurchases, 0, ',', '.') }}</p>
             </div>
             <div class="bg-white shadow-lg rounded-lg p-6">
@@ -44,11 +44,11 @@
         <!-- Charts -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="bg-white shadow-lg rounded-lg p-6">
-                <h5 class="text-lg font-semibold mb-4">Grafik Keuangan</h5>
+                <h5 class="text-lg font-semibold mb-4">Financial Charts</h5>
                 <canvas id="financeChart" width="400" height="200"></canvas>
             </div>
             <div class="bg-white shadow-lg rounded-lg p-6">
-                <h5 class="text-lg font-semibold mb-4">Top 5 Produk Terlaris</h5>
+                <h5 class="text-lg font-semibold mb-4">Top 5 Best Selling Products</h5>
                 <canvas id="topProductsChart" width="400" height="200"></canvas>
             </div>
         </div>
@@ -56,11 +56,11 @@
         <!-- Additional Info -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-white shadow-lg rounded-lg p-6">
-                <h5 class="text-lg font-semibold mb-4">Total Pengeluaran</h5>
+                <h5 class="text-lg font-semibold mb-4">Total Expenditure</h5>
                 <p class="text-2xl font-bold text-gray-700">Rp {{ number_format($totalExpenses, 0, ',', '.') }}</p>
             </div>
             <div class="bg-white shadow-lg rounded-lg p-6">
-                <h5 class="text-lg font-semibold mb-4">Total Produk Terbeli</h5>
+                <h5 class="text-lg font-semibold mb-4">Total Products Purchased</h5>
                 <p class="text-2xl font-bold text-gray-700">{{ number_format($totalProductsPurchased, 0, ',', '.') }} produk</p>
             </div>
         </div>

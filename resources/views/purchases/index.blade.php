@@ -27,24 +27,25 @@
                     <td class="px-6 py-4 border-b">{{ $purchase->purchase_date}}</td>
                     <td class="px-6 py-4 border-b">
                         @if($purchase->payment_status == 'Lunas')
-                            <span class="text-green-600 font-semibold">Lunas</span>
+                            <span class="text-green-600 font-semibold">Paid</span>
                         @else
-                            <span class="text-red-600 font-semibold">Belum Lunas</span>
+                            <span class="text-red-600 font-semibold">Not paid</span>
                         @endif
                     </td>
                     <td class="px-6 py-4 border-b">
-                        <a href="{{ route('purchases.edit', $purchase->id) }}" class="text-blue-600 hover:text-blue-900">Edit</a>
-                    </td>
-                    <td class="px-6 py-4 border-b">
-                        <form action="{{ route('purchases.destroy', $purchase->id) }}" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
-                        </form>
+                        <div class="flex space-x-2">
+                            <a href="{{ route('purchases.edit', $purchase->id) }}" class="text-blue-600 hover:text-blue-900">Edit</a>
+                            <form action="{{ route('purchases.destroy', $purchase->id) }}" method="POST">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
             @endforeach
             </tbody>
         </table>
+
     </div>
 @endsection

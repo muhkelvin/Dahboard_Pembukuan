@@ -17,10 +17,11 @@ class ProductController extends Controller
         $products = Product::with('category')
             ->where('name', 'like', '%' . $search . '%')
             ->orderBy('name', $order)
-            ->get();
+            ->paginate(10); // Menambahkan paginasi dengan 10 item per halaman
 
         return view('crud.products.index', compact('products', 'order', 'search'));
     }
+
 
     public function create()
     {

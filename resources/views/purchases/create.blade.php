@@ -7,7 +7,7 @@
         @if($errors->any())
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
                 <strong class="font-bold">Whoops!</strong>
-                <span class="block sm:inline">Ada beberapa masalah dengan input Anda.</span>
+                <span class="block sm:inline">There are some problems with your input.</span>
                 <ul class="mt-3 list-disc list-inside text-sm text-red-600">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -30,7 +30,7 @@
 
             <div class="mb-4">
                 <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Name</label>
-                <input type="text" name="name" id="name" value="{{ old('name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Kalau Belum Bayar Tulis Nama Pembeli">
+                <input type="text" name="name" id="name" value="{{ old('name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="If You Haven't Paid, Write the Buyer's Name">
             </div>
 
             <div class="mb-4">
