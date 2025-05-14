@@ -8,10 +8,24 @@ use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::all();
-        return view('crud.categories.index', compact('categories'));
+        $search = $request->get('search', '');
+        $sort = $request->get('sort', 'name');
+        $order = $request->get('order', 'asc');
+
+        $categories = Category::query()
+            ->when($search, function($query) use ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%$search%")
+                        ->orWhere('description', 'like', "%$search%");
+                });
+            })
+            ->orderBy($sort, $order)
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('crud.categories.index', compact('categories', 'search', 'sort', 'order'));
     }
 
     public function create()

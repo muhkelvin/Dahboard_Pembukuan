@@ -11,15 +11,45 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $order = $request->get('order', 'asc'); // Default order A-Z (ascending)
-        $search = $request->get('search', ''); // Default search query is empty
+        $search = $request->get('search', '');
+        $sort = $request->get('sort', 'name');
+        $order = $request->get('order', 'asc');
+        $category = $request->get('category', '');
+        $stockStatus = $request->get('stock_status', '');
 
         $products = Product::with('category')
-            ->where('name', 'like', '%' . $search . '%')
-            ->orderBy('name', $order)
-            ->paginate(10); // Menambahkan paginasi dengan 10 item per halaman
+            ->when($search, function($query) use ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%$search%")
+                        ->orWhere('description', 'like', "%$search%");
+                });
+            })
+            ->when($category, function($query) use ($category) {
+                $query->whereHas('category', function($q) use ($category) {
+                    $q->where('id', $category);
+                });
+            })
+            ->when($stockStatus, function($query) use ($stockStatus) {
+                if ($stockStatus === 'low') {
+                    $query->where('stock', '<', 10);
+                } elseif ($stockStatus === 'out') {
+                    $query->where('stock', 0);
+                }
+            })
+            ->orderBy($sort, $order)
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('crud.products.index', compact('products', 'order', 'search'));
+        $categories = Category::orderBy('name')->pluck('name', 'id');
+
+        return view('crud.products.index', compact('products', 'categories'))
+            ->with([
+                'search' => $search,
+                'sort' => $sort,
+                'order' => $order,
+                'selectedCategory' => $category,
+                'selectedStockStatus' => $stockStatus
+            ]);
     }
 
 

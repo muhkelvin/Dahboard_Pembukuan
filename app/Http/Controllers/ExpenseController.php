@@ -9,7 +9,20 @@ class ExpenseController extends Controller
 {
     public function index()
     {
-        $expenses = Expense::all();
+        $expenses = Expense::query()
+            ->when(request('search'), function($query) {
+                $query->where('description', 'LIKE', '%'.request('search').'%');
+            })
+            ->when(request('start_date'), function($query) {
+                $query->whereDate('expense_date', '>=', request('start_date'));
+            })
+            ->when(request('end_date'), function($query) {
+                $query->whereDate('expense_date', '<=', request('end_date'));
+            })
+            ->orderBy(request('sort_by', 'expense_date'), request('sort_dir', 'desc'))
+            ->paginate(request('per_page', 10))
+            ->withQueryString();
+
         return view('expenses.index', compact('expenses'));
     }
 

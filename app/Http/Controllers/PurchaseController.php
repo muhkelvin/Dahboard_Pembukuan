@@ -11,7 +11,28 @@ class PurchaseController extends Controller
 {
     public function index()
     {
-        $purchases = Purchase::with('product')->get();
+        $purchases = Purchase::with(['product.category'])
+            ->when(request('search'), function($query) {
+                $query->where(function($q) {
+                    $q->where('name', 'like', '%'.request('search').'%')
+                        ->orWhereHas('product', function($q) {
+                            $q->where('name', 'like', '%'.request('search').'%');
+                        });
+                });
+            })
+            ->when(request('status'), function($query) {
+                $query->where('payment_status', request('status'));
+            })
+            ->when(request('start_date'), function($query) {
+                $query->whereDate('purchase_date', '>=', request('start_date'));
+            })
+            ->when(request('end_date'), function($query) {
+                $query->whereDate('purchase_date', '<=', request('end_date'));
+            })
+            ->orderBy(request('sort_by', 'purchase_date'), request('sort_dir', 'desc'))
+            ->paginate(request('per_page', 10))
+            ->withQueryString();
+
         return view('purchases.index', compact('purchases'));
     }
 

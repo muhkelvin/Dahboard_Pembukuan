@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class DashboardController extends Controller
@@ -82,83 +83,97 @@ class DashboardController extends Controller
 
     public function downloadPDF(Request $request)
     {
-        $period = $request->query('period', 'monthly');
+        try {
 
-        // Tentukan rentang tanggal dan label periode
-        $startDate = match ($period) {
-            'daily' => Carbon::today(),
-            'weekly' => Carbon::now()->startOfWeek(),
-            'monthly' => Carbon::now()->startOfMonth(),
-            'yearly' => Carbon::now()->startOfYear(),
-            'all' => null,
-            default => Carbon::now()->startOfMonth(),
-        };
+            $period = $request->query('period', 'monthly');
+            $now = Carbon::now();
 
-        $periodLabel = match ($period) {
-            'daily' => 'Hari Ini',
-            'weekly' => 'Minggu Ini',
-            'monthly' => 'Bulan Ini',
-            'yearly' => 'Tahun Ini',
-            'all' => 'Semua Waktu',
-            default => 'Bulan Ini',
-        };
+            $dateRanges = [
+                'daily' => [
+                    'start' => $now->copy()->startOfDay(),
+                    'end' => $now->copy()->endOfDay(),
+                    'label' => __('Hari Ini')
+                ],
+                'weekly' => [
+                    'start' => $now->copy()->startOfWeek(),
+                    'end' => $now->copy()->endOfWeek(),
+                    'label' => __('Minggu Ini')
+                ],
+                'monthly' => [
+                    'start' => $now->copy()->startOfMonth(),
+                    'end' => $now->copy()->endOfMonth(),
+                    'label' => __('Bulan Ini')
+                ],
+                'yearly' => [
+                    'start' => $now->copy()->startOfYear(),
+                    'end' => $now->copy()->endOfYear(),
+                    'label' => __('Tahun Ini')
+                ],
+                'all' => [
+                    'start' => null,
+                    'end' => null,
+                    'label' => __('Semua Waktu')
+                ]
+            ];
 
-        // Query data berdasarkan rentang tanggal
-        $purchases = Purchase::when($startDate, function ($query) use ($startDate) {
-            return $query->where('purchase_date', '>=', $startDate);
-        })->get();
+            $range = $dateRanges[$period] ?? $dateRanges['monthly'];
 
-        $expenses = Expense::when($startDate, function ($query) use ($startDate) {
-            return $query->where('expense_date', '>=', $startDate);
-        })->get();
+            // Query data dengan eager loading
+            $purchases = Purchase::with('product')
+                ->when($range['start'], function ($query) use ($range) {
+                    return $query->whereBetween('purchase_date', [$range['start'], $range['end']]);
+                })
+                ->get();
 
-        // Menghitung total pembelian
+            $expenses = Expense::when($range['start'], function ($query) use ($range) {
+                return $query->whereBetween('expense_date', [$range['start'], $range['end']]);
+            })
+                ->get();
+
+            // Hitung metrics
+            $metrics = $this->calculateMetrics($purchases, $expenses);
+
+            $pdf = PDF::loadView('dashboard.pdf', array_merge($metrics, [
+                'periodLabel' => $range['label'],
+                'generatedAt' => $now->format('d-m-Y H:i:s'),
+                'dateRange' => $range['start']
+                    ? $range['start']->format('d M Y') . ' - ' . $range['end']->format('d M Y')
+                    : __('Semua Data')
+            ]));
+
+            return $pdf->download('financial-report-'.$now->format('Ymd-His').'.pdf');
+
+        } catch (\Exception $e) {
+            Log::error('PDF Generation Error: '.$e->getMessage());
+            return back()->with('error', __('Gagal membuat laporan. Silakan coba lagi.'));
+        }
+    }
+
+    private function calculateMetrics($purchases, $expenses)
+    {
         $totalPurchases = $purchases->sum('total_price');
         $totalExpenses = $expenses->sum('amount');
-
-        // Total Pembelian yang Belum Lunas
-        $totalPendingPurchases = Purchase::where('payment_status', 'Belum Lunas')
-            ->when($startDate, function ($query) use ($startDate) {
-                return $query->where('purchase_date', '>=', $startDate);
-            })->sum('total_price');
-
-        // Hitung total pendapatan (hanya dari pembelian yang sudah lunas)
         $totalRevenues = $purchases->where('payment_status', 'Lunas')->sum('total_price');
 
-        $profit = $totalRevenues - $totalExpenses;
-
-        // Hitung total produk yang dibeli
-        $totalProductsPurchased = $purchases->sum('quantity');
-
-        // Ambil 5 produk yang paling laku
-        $topSellingProducts = Purchase::select('product_id', DB::raw('SUM(quantity) as total_quantity'))
-            ->when($startDate, function ($query) use ($startDate) {
-                return $query->where('purchase_date', '>=', $startDate);
-            })
-            ->groupBy('product_id')
-            ->orderBy('total_quantity', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($purchase) {
-                $product = Product::find($purchase->product_id);
-                return [
-                    'product' => $product,
-                    'total_quantity' => $purchase->total_quantity,
-                ];
-            });
-
-        $pdf = PDF::loadView('dashboard.pdf', compact(
-            'totalPurchases',
-            'totalPendingPurchases',
-            'totalExpenses',
-            'totalRevenues',
-            'profit',
-            'topSellingProducts',
-            'totalProductsPurchased',
-            'periodLabel'
-        ));
-
-        return $pdf->download('laporan-keuangan-' . Str::slug($periodLabel) . '.pdf');
+        return [
+            'totalPurchases' => $totalPurchases,
+            'totalPendingPurchases' => $purchases->where('payment_status', 'Belum Lunas')->sum('total_price'),
+            'totalExpenses' => $totalExpenses,
+            'totalRevenues' => $totalRevenues,
+            'profit' => $totalRevenues - $totalExpenses,
+            'totalProductsPurchased' => $purchases->sum('quantity'),
+            'expensePercentage' => $totalRevenues ? ($totalExpenses / $totalRevenues) * 100 : 0,
+            'topSellingProducts' => $purchases->groupBy('product_id')
+                ->map(function ($group) {
+                    return [
+                        'product' => $group->first()->product,
+                        'total_quantity' => $group->sum('quantity')
+                    ];
+                })
+                ->sortByDesc('total_quantity')
+                ->take(5)
+                ->values()
+        ];
     }
 }
 

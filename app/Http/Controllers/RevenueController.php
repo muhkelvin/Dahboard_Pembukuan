@@ -10,7 +10,25 @@ class RevenueController extends Controller
 {
     public function index()
     {
-        $revenues = Revenue::with('purchase')->get(); // Mengambil data revenue beserta purchase terkait
+        $revenues = Revenue::with(['purchase.product'])
+            ->when(request('search'), function($query) {
+                $query->whereHas('purchase', function($q) {
+                    $q->where('name', 'like', '%'.request('search').'%')
+                        ->orWhereHas('product', function($q) {
+                            $q->where('name', 'like', '%'.request('search').'%');
+                        });
+                });
+            })
+            ->when(request('start_date'), function($query) {
+                $query->whereDate('created_at', '>=', request('start_date'));
+            })
+            ->when(request('end_date'), function($query) {
+                $query->whereDate('created_at', '<=', request('end_date'));
+            })
+            ->orderBy(request('sort_by', 'created_at'), request('sort_dir', 'desc'))
+            ->paginate(request('per_page', 10))
+            ->withQueryString();
+
         return view('revenues.index', compact('revenues'));
     }
 
